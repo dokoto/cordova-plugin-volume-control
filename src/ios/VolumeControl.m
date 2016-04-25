@@ -66,20 +66,30 @@
     float volume = [[command argumentAtIndex:0] floatValue];
     DLog(@"setVolume: [%f]", volume);
 
-    Class avSystemControllerClass = NSClassFromString(@"AVSystemController");
-    id avSystemControllerInstance = [avSystemControllerClass performSelector:@selector(sharedAVSystemController)];
+    MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame:CGRectMake(-2000., -2000., 0.1f, 0.1f)];
+    NSArray *windows = [UIApplication sharedApplication].windows;
 
-    NSInvocation *privateInvocation = [NSInvocation invocationWithMethodSignature:
-                                     [avSystemControllerClass instanceMethodSignatureForSelector:
-                                      @selector(setActiveCategoryVolumeTo:)]];
-    [privateInvocation setTarget:avSystemControllerInstance];
-    [privateInvocation setSelector:@selector(setActiveCategoryVolumeTo:)];
-    [privateInvocation setArgument:&volume atIndex:2];
-    [privateInvocation invoke];
-    BOOL result;
-    [privateInvocation getReturnValue:&result];
+    volumeView.alpha = 0.1f;
+    volumeView.userInteractionEnabled = NO;
 
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
+    //find the volumeSlider
+    UISlider* volumeViewSlider = nil;
+    for (UIView *view in [volumeView subviews]){
+        if ([view.class.description isEqualToString:@"MPVolumeSlider"]){
+            volumeViewSlider = (UISlider*)view;
+            break;
+        }
+    }
+
+    [volumeViewSlider setValue:volume animated:YES];
+    [volumeViewSlider sendActionsForControlEvents:UIControlEventTouchUpInside];
+
+    if (windows.count > 0) {
+        [[windows objectAtIndex:0] addSubview:volumeView];
+
+    }
+
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:true];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
