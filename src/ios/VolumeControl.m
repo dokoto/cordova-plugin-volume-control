@@ -1,11 +1,9 @@
-/********* VolumeControl.m Cordova Plugin Implementation *******/
-
 #import <Cordova/CDV.h>
 #import <AVFoundation/AVFoundation.h>
 #import <MediaPlayer/MediaPlayer.h>
 
 @interface VolumeControl : CDVPlugin {
-  // Member variables go here.
+    // Member variables go here.
 }
 
 - (void)toggleMute:(CDVInvokedUrlCommand*)command;
@@ -14,6 +12,8 @@
 - (void)getVolume:(CDVInvokedUrlCommand*)command;
 - (void)getCategory:(CDVInvokedUrlCommand*)command;
 - (void)hideVolume:(CDVInvokedUrlCommand*)command;
+- (void)showVolume:(CDVInvokedUrlCommand*)command;
+- (void)hideShowVolume:(BOOL)show;
 @end
 
 @implementation VolumeControl
@@ -27,8 +27,8 @@
     id avSystemControllerInstance = [avSystemControllerClass performSelector:@selector(sharedAVSystemController)];
 
     NSInvocation *privateInvocation = [NSInvocation invocationWithMethodSignature:
-                                      [avSystemControllerClass instanceMethodSignatureForSelector:
-                                       @selector(toggleActiveCategoryMuted)]];
+                                       [avSystemControllerClass instanceMethodSignatureForSelector:
+                                        @selector(toggleActiveCategoryMuted)]];
     [privateInvocation setTarget:avSystemControllerInstance];
     [privateInvocation setSelector:@selector(toggleActiveCategoryMuted)];
     [privateInvocation invoke];
@@ -49,8 +49,8 @@
 
     BOOL result;
     NSInvocation *privateInvocation = [NSInvocation invocationWithMethodSignature:
-                                      [avSystemControllerClass instanceMethodSignatureForSelector:
-                                       @selector(getActiveCategoryMuted:)]];
+                                       [avSystemControllerClass instanceMethodSignatureForSelector:
+                                        @selector(getActiveCategoryMuted:)]];
     [privateInvocation setTarget:avSystemControllerInstance];
     [privateInvocation setSelector:@selector(getActiveCategoryMuted:)];
     [privateInvocation setArgument:&result atIndex:2];
@@ -69,8 +69,6 @@
     MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame:CGRectMake(-2000., -2000., 0.1f, 0.1f)];
     NSArray *windows = [UIApplication sharedApplication].windows;
 
-    volumeView.alpha = 0.1f;
-    volumeView.userInteractionEnabled = NO;
 
     //find the volumeSlider
     UISlider* volumeViewSlider = nil;
@@ -83,11 +81,6 @@
 
     [volumeViewSlider setValue:volume animated:YES];
     [volumeViewSlider sendActionsForControlEvents:UIControlEventTouchUpInside];
-
-    if (windows.count > 0) {
-        [[windows objectAtIndex:0] addSubview:volumeView];
-
-    }
 
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:true];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -115,14 +108,31 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
+- (void)hideShowVolume:(BOOL)show
+{
+    MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame: CGRectZero];
+    volumeView.alpha = (show == YES)? 1.0 : 0.01;
+    [self.webView.superview addSubview: volumeView];
+    [self.webView setNeedsDisplay];
+}
+
 - (void)hideVolume:(CDVInvokedUrlCommand*)command
 {
     CDVPluginResult* pluginResult = nil;
     DLog(@"hideVolume");
 
-    MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame: CGRectZero];
-    volumeView.alpha = 0.01;
-    [self.webView.superview addSubview: volumeView];
+    [self hideShowVolume: NO];
+
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+- (void)showVolume:(CDVInvokedUrlCommand*)command
+{
+    CDVPluginResult* pluginResult = nil;
+    DLog(@"hideVolume");
+
+    [self hideShowVolume: YES];
 
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];

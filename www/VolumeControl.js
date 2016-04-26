@@ -36,3 +36,7 @@ exports.getCategory = function(success, error) {
 exports.hideVolume = function(success, error) {
   exec(success, error, 'VolumeControl', 'hideVolume', []);
 };
+
+exports.showVolume = function(success, error) {
+  exec(success, error, 'VolumeControl', 'showVolume', []);
+};
