@@ -110,8 +110,12 @@
 
 - (void)hideShowVolume:(BOOL)show
 {
-    MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame: CGRectZero];
-    volumeView.alpha = (show == YES)? 1.0 : 0.01;
+    MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame: self.webView.bounds];
+    [volumeView sizeToFit];
+    if(!show){
+        volumeView.alpha = 0.01;
+    }
+    volumeView.showsVolumeSlider=NO;
     [self.webView.superview addSubview: volumeView];
     [self.webView setNeedsDisplay];
 }
