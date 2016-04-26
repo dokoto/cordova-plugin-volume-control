@@ -111,7 +111,7 @@
 
 - (void)volumeVisible:(BOOL)show
 {
-    if (volumeView != nil) {
+    if (volumeView != nil) 
         [volumeView removeFromSuperview];
     }
 
