@@ -4,6 +4,7 @@
 
 @interface VolumeControl : CDVPlugin {
     // Member variables go here.
+    @private MPVolumeView *volumeView;
 }
 
 - (void)toggleMute:(CDVInvokedUrlCommand*)command;
@@ -13,7 +14,7 @@
 - (void)getCategory:(CDVInvokedUrlCommand*)command;
 - (void)hideVolume:(CDVInvokedUrlCommand*)command;
 - (void)showVolume:(CDVInvokedUrlCommand*)command;
-- (void)hideShowVolume:(BOOL)show;
+- (void)volumeVisible:(BOOL)show;
 @end
 
 @implementation VolumeControl
@@ -108,16 +109,23 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
-- (void)hideShowVolume:(BOOL)show
+- (void)volumeVisible:(BOOL)show
 {
-    MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame: self.webView.bounds];
-    [volumeView sizeToFit];
-    if(!show){
-        volumeView.alpha = 0.01;
+    if (volumeView != nil) {
+        [volumeView removeFromSuperview];
     }
-    volumeView.showsVolumeSlider=NO;
-    [self.webView.superview addSubview: volumeView];
-    [self.webView setNeedsDisplay];
+
+    if (show == NO) {
+        volumeView = [[MPVolumeView alloc] initWithFrame: CGRectMake(-100,-100,16,16)];
+        volumeView.showsRouteButton = NO;
+        volumeView.userInteractionEnabled = NO;
+    } else {
+        volumeView = [[MPVolumeView alloc] initWithFrame: CGRectMake(100,100,16,16)];
+        volumeView.showsVolumeSlider=NO;
+    }
+    [self.webView.superview addSubview:volumeView];
+
+    [self.webView.superview setNeedsDisplay];
 }
 
 - (void)hideVolume:(CDVInvokedUrlCommand*)command
@@ -125,7 +133,7 @@
     CDVPluginResult* pluginResult = nil;
     DLog(@"hideVolume");
 
-    [self hideShowVolume: NO];
+    [self volumeVisible: NO];
 
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -136,7 +144,7 @@
     CDVPluginResult* pluginResult = nil;
     DLog(@"hideVolume");
 
-    [self hideShowVolume: YES];
+    [self volumeVisible: YES];
 
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
