@@ -123,6 +123,11 @@
         volumeView = [[MPVolumeView alloc] initWithFrame: CGRectMake(100,100,16,16)];
         volumeView.showsVolumeSlider=NO;
     }
+    
+    #ifdef __IPHONE_8_0
+      volumeView.alpha = (show == YES)? 1.0 : 0.01;
+    #endif
+    
     [self.webView.superview addSubview:volumeView];
 
     [self.webView.superview setNeedsDisplay];
