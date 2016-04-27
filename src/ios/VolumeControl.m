@@ -132,12 +132,15 @@
     }
     
     #ifdef IS_OS_8_OR_LATER
-      volumeView.alpha = (show == YES)? 1.0 : 0.01;
+        volumeView.alpha = (show == YES)? 1.0 : 0.01;
+        [self.webView.superview addSubview:volumeView];
+        [self.webView.superview insertSubview:volumeView atIndex: (show == YES)? 0 : [[self.webView.superview subView] count]];
+    #else
+        [self.webView.superview addSubview:volumeView];    
+        [self.webView.superview setNeedsDisplay];
     #endif
-    
-    [self.webView.superview addSubview:volumeView];
 
-    [self.webView.superview setNeedsDisplay];
+    
 }
 
 - (void)hideVolume:(CDVInvokedUrlCommand*)command
