@@ -2,7 +2,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <MediaPlayer/MediaPlayer.h>
 
-#define IS_IPHONE5 (([[UIScreen mainScreen] bounds].size.height-568)?NO:YES) 
+#define IS_IPHONE5 (([[UIScreen mainScreen] bounds].size.height-568)?NO:YES)
 #define IS_OS_5_OR_LATER    ([[[UIDevice currentDevice] systemVersion] floatValue] >= 5.0)
 #define IS_OS_6_OR_LATER    ([[[UIDevice currentDevice] systemVersion] floatValue] >= 6.0)
 #define IS_OS_7_OR_LATER    ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0)
@@ -14,154 +14,86 @@
     @private MPVolumeView *volumeView;
 }
 
-- (void)toggleMute:(CDVInvokedUrlCommand*)command;
-- (void)isMuted:(CDVInvokedUrlCommand*)command;
-- (void)setVolume:(CDVInvokedUrlCommand*)command;
-- (void)getVolume:(CDVInvokedUrlCommand*)command;
-- (void)getCategory:(CDVInvokedUrlCommand*)command;
-- (void)hideVolume:(CDVInvokedUrlCommand*)command;
-- (void)showVolume:(CDVInvokedUrlCommand*)command;
-- (void)volumeVisible:(BOOL)show;
+// Public Plugin Interface
+- (void)setVolumeAfterHideHUD:(CDVInvokedUrlCommand*)command;
+- (void)setVolumeBeforeShowHUD:(CDVInvokedUrlCommand*)command;
 @end
 
 @implementation VolumeControl
 
-- (void)toggleMute:(CDVInvokedUrlCommand*)command
+/*
+ * PUBLIC METHODS
+ */
+
+- (void)setVolumeAfterHideHUD:(CDVInvokedUrlCommand*)command
 {
     CDVPluginResult* pluginResult = nil;
-    DLog(@"toggleMute");
-
-    Class avSystemControllerClass = NSClassFromString(@"AVSystemController");
-    id avSystemControllerInstance = [avSystemControllerClass performSelector:@selector(sharedAVSystemController)];
-
-    NSInvocation *privateInvocation = [NSInvocation invocationWithMethodSignature:
-                                       [avSystemControllerClass instanceMethodSignatureForSelector:
-                                        @selector(toggleActiveCategoryMuted)]];
-    [privateInvocation setTarget:avSystemControllerInstance];
-    [privateInvocation setSelector:@selector(toggleActiveCategoryMuted)];
-    [privateInvocation invoke];
-    BOOL result;
-    [privateInvocation getReturnValue:&result];
-
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
+    
+    [self _hideVolomeHUDView];
+    [self performSelector:@selector(_setVolume:) withObject:[NSNumber numberWithFloat: [[command argumentAtIndex:0] floatValue] ] afterDelay:1];
+    
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
-- (void)isMuted:(CDVInvokedUrlCommand*)command
+- (void)setVolumeBeforeShowHUD:(CDVInvokedUrlCommand*)command
 {
     CDVPluginResult* pluginResult = nil;
-    DLog(@"isMuted");
-
-    Class avSystemControllerClass = NSClassFromString(@"AVSystemController");
-    id avSystemControllerInstance = [avSystemControllerClass performSelector:@selector(sharedAVSystemController)];
-
-    BOOL result;
-    NSInvocation *privateInvocation = [NSInvocation invocationWithMethodSignature:
-                                       [avSystemControllerClass instanceMethodSignatureForSelector:
-                                        @selector(getActiveCategoryMuted:)]];
-    [privateInvocation setTarget:avSystemControllerInstance];
-    [privateInvocation setSelector:@selector(getActiveCategoryMuted:)];
-    [privateInvocation setArgument:&result atIndex:2];
-    [privateInvocation invoke];
-
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
+    
+    [self _setVolume: [NSNumber numberWithFloat: [[command argumentAtIndex:0] floatValue] ] ];
+    [self performSelector:@selector(_showVolumeHUDView) withObject:nil afterDelay:2];
+    
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
-- (void)setVolume:(CDVInvokedUrlCommand*)command
-{
-    CDVPluginResult* pluginResult = nil;
-    float volume = [[command argumentAtIndex:0] floatValue];
-    DLog(@"setVolume: [%f]", volume);
-
-    MPVolumeView *volumeView = [[MPVolumeView alloc] initWithFrame:CGRectMake(-2000., -2000., 0.1f, 0.1f)];
-    NSArray *windows = [UIApplication sharedApplication].windows;
 
 
+/*
+ * PRIVATE METHODS
+ */
+
+- (void)_hideVolomeHUDView {
+    if (volumeView != nil) {
+        [volumeView removeFromSuperview];
+        volumeView = nil;
+    }
+    
+    volumeView = [[MPVolumeView alloc] initWithFrame: CGRectMake(-100,-100,16,16)];
+    volumeView.showsRouteButton = NO;
+    volumeView.userInteractionEnabled = NO;
+    
+    [self.webView.superview addSubview:volumeView];
+    [self.webView.superview setNeedsDisplay];
+}
+
+- (void)_showVolumeHUDView {
+    if (volumeView != nil) {
+        [volumeView removeFromSuperview];
+        volumeView = nil;
+    }
+    
+    volumeView = [[MPVolumeView alloc] initWithFrame: CGRectMake(100,100,16,16)];
+    volumeView.showsVolumeSlider = NO;
+    
+    [self.webView.superview addSubview:volumeView];
+    [self.webView.superview setNeedsDisplay];
+}
+
+- (void)_setVolume:(NSNumber*)volume {
+    MPVolumeView *VolumeView = [[MPVolumeView alloc] initWithFrame:CGRectMake(-2000., -2000., 0.1f, 0.1f)];
+    
     //find the volumeSlider
     UISlider* volumeViewSlider = nil;
-    for (UIView *view in [volumeView subviews]){
+    for (UIView *view in [VolumeView subviews]){
         if ([view.class.description isEqualToString:@"MPVolumeSlider"]){
             volumeViewSlider = (UISlider*)view;
             break;
         }
     }
-
-    [volumeViewSlider setValue:volume animated:YES];
-    [volumeViewSlider sendActionsForControlEvents:UIControlEventTouchUpInside];
-
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:true];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
-- (void)getVolume:(CDVInvokedUrlCommand*)command
-{
-    CDVPluginResult* pluginResult = nil;
-    DLog(@"getVolume");
-
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDouble:audioSession.outputVolume];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
-- (void)getCategory:(CDVInvokedUrlCommand*)command
-{
-    CDVPluginResult* pluginResult = nil;
-    DLog(@"getCategory");
-
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:audioSession.category];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
-- (void)volumeVisible:(BOOL)show
-{
-    if (volumeView != nil) {
-        [volumeView removeFromSuperview];
-    }
-
-    if (show == NO) {
-        volumeView = [[MPVolumeView alloc] initWithFrame: CGRectMake(-100,-100,16,16)];
-        volumeView.showsRouteButton = NO;
-        volumeView.userInteractionEnabled = NO;
-    } else {
-        volumeView = [[MPVolumeView alloc] initWithFrame: CGRectMake(100,100,16,16)];
-        volumeView.showsVolumeSlider=NO;
-    }
     
-    #ifdef IS_OS_8_OR_LATER
-        volumeView.alpha = (show == YES)? 1.0 : 0.01;
-        [self.webView.superview addSubview:volumeView];
-        [self.webView.superview insertSubview:volumeView atIndex: (show == YES)? 0 : [[self.webView.superview subviews] count]];
-    #else
-        [self.webView.superview addSubview:volumeView];    
-        [self.webView.superview setNeedsDisplay];
-    #endif
-
-}
-
-- (void)hideVolume:(CDVInvokedUrlCommand*)command
-{
-    CDVPluginResult* pluginResult = nil;
-    DLog(@"hideVolume");
-
-    [self volumeVisible: NO];
-
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
-- (void)showVolume:(CDVInvokedUrlCommand*)command
-{
-    CDVPluginResult* pluginResult = nil;
-    DLog(@"hideVolume");
-
-    [self volumeVisible: YES];
-
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    [volumeViewSlider setValue:[volume floatValue] animated:YES];
+    [volumeViewSlider sendActionsForControlEvents:UIControlEventTouchUpInside];
 }
 
 @end
